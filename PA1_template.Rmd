@@ -1,25 +1,128 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+title: "ActivityMonitoring"
+author: "Richard Ellison"
+date: "Wednesday, June 10, 2015"
+output: html_document
 ---
 
+#Reproducible Research - Peer Assessment 1#
 
-## Loading and preprocessing the data
+##Load the data and transform for later analysis##
 
+```{r, echo=TRUE}
+#DataFile <- ("./Coursera/ActivityMonitoring/activity.csv")
+DataFile <- "activity.csv"
+ActivityData <- read.csv(DataFile)
 
+# format string to date format
+ActivityData$date <- as.POSIXct(ActivityData$date, format="%Y-%m-%d")
 
-## What is mean total number of steps taken per day?
+# Build dataframe for weekday work
+ActivityData <- data.frame(date=ActivityData$date,
+                        steps=ActivityData$steps,
+                        interval=ActivityData$interval,
+                        weekday=weekdays(ActivityData$date))
 
+# Compute the daytype from the weekday from the date
+ActivityFull <- cbind(ActivityData, daytype=ifelse(ActivityData$weekday=="Saturday"|
+                        ActivityData$weekday=="Sunday","weekend","weekday"))
 
+# clear out the original
+#rm(ActivityData)
 
-## What is the average daily activity pattern?
+```
 
+**What is the mean total of steps taken per day?  First show histogram of all steps.**
 
+```{r, echo=TRUE}
+StepsPerDay <- aggregate(steps~date, ActivityFull, FUN=sum)
+#histogram for total number of steps taken each day
+barplot(StepsPerDay$steps, names.arg=StepsPerDay$date, xlab="date", ylab="steps")
+```
 
-## Imputing missing values
+**Then report on mean and median steps per day**
 
+```{r, echo=TRUE}
+mean(StepsPerDay$steps)
+median(StepsPerDay$steps)
+```
 
+**What is the average daily activity pattern?**
 
-## Are there differences in activity patterns between weekdays and weekends?
+```{r, echo=TRUE}
+#Make a time series plot of the 5-minute interval and avg num of steps,
+#    averaged across all days
+AverageSteps <- aggregate(steps~interval, ActivityFull, FUN=mean)
+plot(AverageSteps, type="l")
+```
+
+**Which 5-minute interval, on average, contains the maximum number of steps?**
+
+```{r, echo=TRUE}
+AverageSteps$interval[which.max(AverageSteps$steps)]
+```
+
+**Find number of rows with missing values (NA)**
+```{r, echo=TRUE}
+sum(is.na(ActivityFull))
+
+```
+
+**Impute missing values from 5-minute intervals**
+```{r, echo=TRUE}
+ActivityFull <- merge(ActivityFull, AverageSteps, by="interval")
+NARecords <- is.na(ActivityFull$steps.x)
+ActivityFull$steps[NARecords] <- ActivityFull$steps.y[NARecords]
+ActivityFull <- ActivityFull[, c(1,2,4,5,6)]
+names(ActivityFull)[names(ActivityFull)=="steps.y"] <- "steps"
+#check that no nulls remain
+sum(is.na(ActivityFull))
+
+```
+
+**Make a histogram of the total number of steps taken each day**
+```{r, echo=TRUE}
+StepsPerDay2 <- aggregate(steps~date, ActivityFull, FUN=sum)
+#barplot(StepsPerDay2$steps, names.arg=StepsPerDay2$date, xlab="date",
+barplot(StepsPerDay$steps, names.arg=StepsPerDay$date, xlab="date", 
+        ylab="steps", ylim=c(0,20000))
+```
+
+**Show mean and median total number of steps per day**
+```{r, echo=TRUE}
+mean(StepsPerDay2$steps)
+median(StepsPerDay2$steps)
+```
+
+*Missing data has a low impact between missing data and estimates*
+
+**Are there differences in activity patterns between weekdays and weekends?**
+```{r, echo=TRUE}
+par(mfrow=c(2,1))
+for (type in c("weekend","weekday")) {
+        StepsType <- aggregate(steps~interval, data=ActivityFull, 
+                                subset=ActivityFull$daytype==type,
+                                FUN=mean)
+        plot(StepsType, type="l", main=type)
+}
+```
+
+echo=FALSE
+#```{r, echo=FALSE}
+#par(mfrow=c(2,1))
+#StepsByDayFinal <- aggregate(steps ~ interval + daytype, ActivityFull, mean)
+#with(StepsByDayFinal, plot(steps~interval, type="n", main="Weekday vs. Weekend"))
+#with(StepsByDayFinal[StepsByDayFinal$daytype=="weekday",], lines(steps~interval, type="l", col="red"))
+#with(StepsByDayFinal[StepsByDayFinal$daytype=="weekend",], lines(steps~interval, type="l", col="blue"))
+#```
+#``{r, echo=FALSE}
+#par(mfrow=c(2,1))
+#StepsByDayFinal <- aggregate(steps ~ interval + daytype, ActivityFull, mean)
+#StepsByDayWeekday <- subset(StepsByDayFinal, daytype=c("weekday"))
+#StepsByDayWeekend <- subset(StepsByDayFinal, daytype=c("weekend"))
+#WeekdaySteps <- aggregate(steps~interval, StepsByDayWeekday, FUN=mean)
+#plot(WeekdaySteps, type="l")
+#WeekendSteps <- aggregate(steps~interval, StepsByDayWeekend, FUN=mean)
+#plot(WeekendSteps, type="l")
+#```
+
