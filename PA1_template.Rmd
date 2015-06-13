@@ -8,6 +8,11 @@ output: html_document
 #Reproducible Research - Peer Assessment 1#
 
 ##Load the data and transform for later analysis##
+```{r setup, cach=FALSE, include=FALSE}
+library(knitr)
+opts_chunk$set(fig.path='figure/')
+```
+
 
 ```{r, echo=TRUE}
 #DataFile <- ("./Coursera/ActivityMonitoring/activity.csv")
